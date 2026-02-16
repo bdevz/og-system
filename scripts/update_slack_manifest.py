@@ -65,7 +65,9 @@ MANIFEST = {
                 "pins:write",
                 "reactions:read",
                 "reactions:write",
-                "users:read"
+                "users:read",
+                "channels:join",
+                "channels:manage"
             ]
         }
     },
@@ -114,7 +116,7 @@ if result.get("ok"):
     print("Manifest updated successfully!")
     print(f"App ID: {APP_ID}")
     print(f"\nScopes added:")
-    added = ["chat:write.customize", "files:read", "files:write", "pins:write", "reactions:write"]
+    added = ["chat:write.customize", "files:read", "files:write", "pins:write", "reactions:write", "channels:join", "channels:manage"]
     for s in added:
         print(f"  + {s}")
     print(f"\nEvents (already configured, preserved):")

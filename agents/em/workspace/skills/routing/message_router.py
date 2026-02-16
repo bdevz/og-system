@@ -256,7 +256,7 @@ def route_message(envelope: Dict[str, Any], state: SystemState = None) -> Dict[s
 
 
 def _log_routing_decision(decision: Dict[str, Any], envelope: Dict[str, Any]):
-    """Log routing decision to routing log and agent feed."""
+    """Log routing decision to routing log, agent feed, and Slack."""
 
     # Write to routing log
     log_entry = {
@@ -287,6 +287,30 @@ def _log_routing_decision(decision: Dict[str, Any], envelope: Dict[str, Any]):
 
     with open(AGENT_FEED_FILE, "a") as f:
         f.write(json.dumps(feed_entry) + "\n")
+
+    # Post to Slack channels
+    try:
+        import sys
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent / "shared"))
+        from slack_client import post_message
+
+        # Post all routing decisions to #og-agent-feed
+        from_agent = envelope.get("from", "?")
+        to_agent = envelope.get("to", "?")
+        routing = decision.get("routing_decision", "?")
+        ref = envelope.get("reference", "")
+        priority = envelope.get("priority", "NORMAL")
+        feed_text = f"*{from_agent} -> {to_agent}* | `{routing}` | {priority} | ref: {ref}\n_{decision.get('reason', '')}_"
+        post_message("og-agent-feed", feed_text, agent="EM")
+
+        # Escalations also go to #og-alerts
+        if routing == "ESCALATE_TO_HUMAN":
+            severity = decision.get("severity", "HIGH")
+            emoji = ":rotating_light:" if severity == "CRITICAL" else ":warning:"
+            alert_text = f"{emoji} *ESCALATION: {from_agent} -> {to_agent}*\n{decision.get('reason', '')}\nSeverity: {severity} | Ref: {ref}"
+            post_message("og-alerts", alert_text, agent="EM")
+    except Exception:
+        pass  # Slack posting is best-effort
 
 
 # --- CLI interface for testing ---

@@ -27,83 +27,83 @@ SYSTEM_HISTORY = Path(__file__).parent.parent.parent / "memory" / "system-histor
 ALERT_TEMPLATES = {
     "PROFILE_BAN": {
         "severity": "CRITICAL",
-        "channel": "#alerts",
+        "channel": "#og-alerts",
         "title": "LinkedIn Profile Ban Detected",
         "description": "Profile {profile_id} has been restricted or banned by LinkedIn.",
         "recommended_action": "Rotate to backup profile immediately. Review profile usage pattern for rate limit violations.",
-        "escalation": true
+        "escalation": True
     },
     "VISA_EXPIRING_SOON": {
         "severity": "HIGH",
-        "channel": "#alerts",
+        "channel": "#og-alerts",
         "title": "Visa Expiration Alert",
         "description": "Consultant {consultant_id} visa expiring in {days_remaining} days.",
         "recommended_action": "Prioritize for immediate submission. Increase research intensity.",
-        "escalation": true
+        "escalation": True
     },
     "DUPLICATE_SUBMISSION": {
         "severity": "CRITICAL",
-        "channel": "#alerts",
+        "channel": "#og-alerts",
         "title": "Duplicate Submission Detected (Data Integrity Breach)",
         "description": "Consultant {consultant_id} submitted to {client} via {vendor1} and {vendor2} within 90 days.",
         "recommended_action": "Block second submission. Analyze conflict. Report to client.",
-        "escalation": true
+        "escalation": True
     },
     "AGENT_DEAD": {
         "severity": "CRITICAL",
-        "channel": "#alerts",
+        "channel": "#og-alerts",
         "title": "Agent Unresponsive (DEAD)",
         "description": "Agent {agent_id} has no activity for >30 minutes.",
         "recommended_action": "Trigger restart from backup immediately. Verify data integrity.",
-        "escalation": true
+        "escalation": True
     },
     "AGENT_ERROR": {
         "severity": "HIGH",
-        "channel": "#alerts",
+        "channel": "#og-alerts",
         "title": "Agent Error State",
         "description": "Agent {agent_id} encountered error: {error_message}",
         "recommended_action": "Attempt auto-recovery (retry task). If persistent, escalate to human.",
-        "escalation": true
+        "escalation": True
     },
     "AGENT_SLOW": {
         "severity": "MEDIUM",
-        "channel": "#em-dashboard",
+        "channel": "#og-em-dashboard",
         "title": "Agent Running Slow",
         "description": "Agent {agent_id} task '{task}' taking {duration}min (expected {expected}min).",
         "recommended_action": "Investigate root cause. Check queue depth and system resources.",
-        "escalation": false
+        "escalation": False
     },
     "DATA_QUALITY_LOW": {
         "severity": "MEDIUM",
-        "channel": "#em-dashboard",
+        "channel": "#og-em-dashboard",
         "title": "Data Quality Below Threshold",
         "description": "Data quality score: {score}% (target >95%). {details}",
         "recommended_action": "Trigger audit. Identify missing/invalid fields. Schedule fixing.",
-        "escalation": false
+        "escalation": False
     },
     "QUOTA_MISS": {
         "severity": "HIGH",
-        "channel": "#alerts",
+        "channel": "#og-alerts",
         "title": "Quota Miss Alert",
         "description": "Agent {agent_id} missed quota '{quota_name}': {actual} vs {target} target.",
         "recommended_action": "Diagnose root cause. Check for input delays or processing issues.",
-        "escalation": true
+        "escalation": True
     },
     "CRM_DATA_STALE": {
         "severity": "HIGH",
-        "channel": "#alerts",
+        "channel": "#og-alerts",
         "title": "CRM Data Stale (>4 hours)",
         "description": "Z's CRM data is {age_hours} hours old. May impact downstream accuracy.",
         "recommended_action": "Trigger CRM import. Notify Z to process fresh data.",
-        "escalation": true
+        "escalation": True
     },
     "INBOUND_RESPONSE_SLA_MISS": {
         "severity": "MEDIUM",
-        "channel": "#em-dashboard",
+        "channel": "#og-em-dashboard",
         "title": "Inbound Response SLA Miss",
         "description": "Inbound lead from {client} waiting {time_minutes}min. SLA: 60min.",
         "recommended_action": "Escalate to Rick. Prioritize positioning.",
-        "escalation": false
+        "escalation": False
     },
 }
 
@@ -212,7 +212,7 @@ def should_escalate(alert: Alert) -> bool:
 
 
 def log_alert(alert: Alert):
-    """Log alert to alerts log and system history."""
+    """Log alert to alerts log, system history, and Slack."""
     # Write to alerts log
     with open(ALERTS_LOG, "a") as f:
         f.write(json.dumps(alert.to_dict()) + "\n")
@@ -229,6 +229,15 @@ def log_alert(alert: Alert):
 
     with open(SYSTEM_HISTORY, "a") as f:
         f.write(json.dumps(history_entry) + "\n")
+
+    # Post to Slack
+    try:
+        import sys
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent / "shared"))
+        from slack_client import post_alert as _post_alert
+        _post_alert(alert, agent=alert.agent or "EM")
+    except Exception:
+        pass  # Slack posting is best-effort; local log is the source of truth
 
 
 def generate_profile_ban_alert(profile_id: str, reason: str) -> Alert:

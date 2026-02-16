@@ -173,6 +173,31 @@ def generate_hotlist(
     return "\n".join(lines)
 
 
+def post_hotlist_to_slack(
+    prioritized_profiles: list,
+    submission_stats: dict = None,
+    stale_submissions: list = None,
+    alerts: list = None,
+    report_date: Optional[str] = None,
+) -> bool:
+    """
+    Generate the Hot List and post to #og-daily-hotlist via Slack API.
+    """
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent / "shared"))
+
+    hotlist = generate_hotlist(prioritized_profiles, submission_stats, stale_submissions, alerts, report_date)
+
+    try:
+        from slack_client import post_message
+        post_message("og-daily-hotlist", hotlist, agent="Z")
+        return True
+    except Exception as e:
+        print(f"Slack posting failed: {e}")
+        return False
+
+
 if __name__ == "__main__":
     # Demo with sample data
     sample_profiles = [

@@ -163,21 +163,29 @@ Generated: {timestamp.isoformat()} | Next report: Tomorrow 17:00
 
 def post_daily_report_to_slack() -> bool:
     """
-    Generate report and simulate posting to Slack.
-
-    In production, this would call Slack API via EM's Slack integration.
-    For now, we log the report to a file.
+    Generate report and post to #og-em-dashboard via Slack API.
+    Also logs the report locally as backup.
     """
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent / "shared"))
+
     report = generate_daily_report()
 
-    # Log report for demo purposes
+    # Log report locally as backup
     report_file = Path(__file__).parent.parent.parent / "memory" / "daily-reports.txt"
     with open(report_file, "a") as f:
         f.write("\n" + "=" * 80 + "\n")
         f.write(report)
         f.write("\n")
 
-    return True
+    # Post to Slack
+    try:
+        from slack_client import post_message
+        post_message("og-em-dashboard", report, agent="EM")
+        return True
+    except Exception as e:
+        print(f"Slack posting failed (report saved locally): {e}")
+        return False
 
 
 # --- CLI interface for testing ---

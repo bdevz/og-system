@@ -123,7 +123,7 @@
         "severity": ["CRITICAL", "HIGH"]
       },
       "action": "escalate_to_human",
-      "channel": "#alerts",
+      "channel": "#og-alerts",
       "immediate_notification": true,
       "recommended_action_required": true
     },
@@ -180,7 +180,7 @@
         "content": "HOT_LIST"
       },
       "action": "publish_to_slack",
-      "channel": "#daily-hotlist",
+      "channel": "#og-daily-hotlist",
       "deadline": "07:00",
       "escalation": "Human alert if deadline missed by >15min",
       "recipients": [
@@ -221,7 +221,7 @@
         "threshold": "30 minutes"
       },
       "action": "escalate_to_human",
-      "channel": "#alerts",
+      "channel": "#og-alerts",
       "information": "Pending submission requests count, reason for delay if available",
       "recommended_action": "Review Jay's queue or extend deadline"
     },
@@ -274,7 +274,7 @@
         "threshold": "4 hours"
       },
       "action": "escalate_to_human",
-      "channel": "#alerts",
+      "channel": "#og-alerts",
       "severity": "HIGH",
       "information": "Data age, reason for delay if known, impact on downstream agents"
     },
@@ -315,7 +315,7 @@
         "Log event in system-history",
         "Escalate to human"
       ],
-      "channel": "#alerts",
+      "channel": "#og-alerts",
       "severity": "CRITICAL",
       "recommended_action": "Review profile usage pattern, implement stricter rate limiting"
     },
@@ -328,7 +328,7 @@
         "threshold": "<30"
       },
       "action": "escalate_to_human",
-      "channel": "#alerts",
+      "channel": "#og-alerts",
       "severity": "HIGH",
       "recommended_action": "Prioritize for immediate submission, increase research intensity"
     },
@@ -344,7 +344,7 @@
         "Log conflict details",
         "Escalate to human"
       ],
-      "channel": "#alerts",
+      "channel": "#og-alerts",
       "severity": "CRITICAL",
       "reason": "Duplicate submission destroys agency credibility"
     }
@@ -421,7 +421,7 @@
         "action": "Publish daily report",
         "agent": "EM",
         "deadline": "HARD",
-        "channel": "#em-dashboard",
+        "channel": "#og-em-dashboard",
         "description": "EM posts daily system health and quota report"
       },
       {
