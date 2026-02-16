@@ -1,0 +1,137 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-02-15T00:00:00Z",
+  "updated_by": "initial_setup",
+  "change_reason": "Initial weight configuration per architecture spec",
+  "description": "Health score weights and scoring tables for LinkedIn profile health calculation",
+  "weights": {
+    "account_age": 0.15,
+    "connection_count": 0.15,
+    "daily_application_count": 0.20,
+    "days_since_last_restriction": 0.15,
+    "activity_diversity_score": 0.15,
+    "session_pattern_regularity_score": 0.10,
+    "connection_request_acceptance_rate": 0.10
+  },
+  "thresholds": {
+    "green_minimum": 85,
+    "yellow_minimum": 60,
+    "orange_minimum": 30,
+    "red_maximum": 29
+  },
+  "state_definitions": {
+    "GREEN": {
+      "range": [85, 100],
+      "activity_level": "FULL",
+      "daily_app_limit": "tier_default",
+      "restrictions": [],
+      "description": "Account healthy, full operations authorized"
+    },
+    "YELLOW": {
+      "range": [60, 84],
+      "activity_level": "REDUCED",
+      "daily_app_limit": 2,
+      "restrictions": ["max_2_apps_per_day", "light_activity_only"],
+      "description": "Account showing stress, reduce activity"
+    },
+    "ORANGE": {
+      "range": [30, 59],
+      "activity_level": "HYDRATION",
+      "daily_app_limit": 0,
+      "restrictions": ["no_applications", "browse_and_react_only"],
+      "description": "Account at risk, hydration and light engagement only"
+    },
+    "RED": {
+      "range": [0, 29],
+      "activity_level": "QUARANTINE",
+      "daily_app_limit": 0,
+      "restrictions": ["zero_activity", "immediate_investigation"],
+      "description": "Account compromised or severely at risk, stop all activity immediately"
+    }
+  },
+  "scoring_tables": {
+    "account_age": {
+      "description": "Score based on account age in days",
+      "less_than_30": 20,
+      "30_to_90": 50,
+      "91_to_180": 70,
+      "181_plus": 100
+    },
+    "connection_count": {
+      "description": "Score based on total connection count",
+      "less_than_50": 20,
+      "50_to_100": 50,
+      "101_to_300": 80,
+      "301_plus": 100
+    },
+    "daily_application_count": {
+      "description": "Score based on applications submitted today (inverse: more apps = lower score)",
+      "0_applications": 100,
+      "1_to_2": 90,
+      "3_to_4": 70,
+      "5": 50,
+      "6_plus": 20
+    },
+    "days_since_last_restriction": {
+      "description": "Score based on how long since last restriction/warning",
+      "never_restricted": 100,
+      "90_plus_days": 80,
+      "30_to_90_days": 50,
+      "less_than_30_days": 20
+    },
+    "activity_diversity_score": {
+      "description": "Score based on variety of activities (applications, connections, reactions, views, etc)",
+      "diverse": 100,
+      "mostly_diverse": 75,
+      "moderate": 50,
+      "limited": 30,
+      "only_applying": 20
+    },
+    "session_pattern_regularity_score": {
+      "description": "Score based on how human-like the session patterns are",
+      "highly_variable": 100,
+      "variable_human_like": 90,
+      "somewhat_variable": 60,
+      "regular_pattern": 40,
+      "mechanical": 30
+    },
+    "connection_request_acceptance_rate": {
+      "description": "Score based on what % of sent connection requests are accepted",
+      "over_70_percent": 100,
+      "50_to_70_percent": 70,
+      "30_to_50_percent": 40,
+      "under_30_percent": 20
+    }
+  },
+  "state_transitions": {
+    "description": "Conditions that trigger state changes",
+    "green_to_yellow": "Score drops below 85 or daily app count reaches 4+",
+    "yellow_to_orange": "Score drops below 60 or LinkedIn warning banner appears",
+    "orange_to_red": "Score drops below 30 or account restricted",
+    "any_to_red_immediate": "Trust & Safety alert, verification request, or hard restriction"
+  },
+  "recommended_actions": {
+    "GREEN": [
+      "maintain_current_activity",
+      "continue_applications_at_tier_rate"
+    ],
+    "YELLOW": [
+      "reduce_daily_applications_to_2",
+      "increase_activity_diversity",
+      "skip_applications_if_not_critical",
+      "increase_session_gaps"
+    ],
+    "ORANGE": [
+      "stop_all_applications",
+      "hydration_only_browsing_reactions",
+      "increase_session_gaps_to_24_hours",
+      "monitor_profile_for_restrictions"
+    ],
+    "RED": [
+      "immediate_quarantine",
+      "alert_human_and_z",
+      "zero_activity",
+      "investigate_root_cause"
+    ]
+  }
+}

@@ -1,0 +1,555 @@
+{
+  "version": "1.0",
+  "created": "2025-02-15T00:00:00Z",
+  "description": "Routing rules, dependency graph, and work schedule for OG multi-agent system",
+
+  "dependency_graph": {
+    "Z": {
+      "agent_id": "Z",
+      "role": "Candidate Profile Manager",
+      "inputs": [
+        "CRM_DATA_EXPORT"
+      ],
+      "outputs": [
+        "HOT_LIST",
+        "SUBMISSION_APPROVAL",
+        "DATA_QUALITY_REPORT"
+      ],
+      "work_schedule": {
+        "trigger_time": "06:00",
+        "expected_completion": "07:00",
+        "priority_deadline": "07:30"
+      },
+      "safety_gate": true,
+      "required_for_downstream": ["Jay", "Rick", "Leroy"]
+    },
+    "Jay": {
+      "agent_id": "Jay",
+      "role": "Job Research & Submission Intelligence",
+      "inputs": [
+        "Z.HOT_LIST"
+      ],
+      "outputs": [
+        "SUBMISSION_REQUESTS"
+      ],
+      "work_schedule": {
+        "trigger_time": "07:15",
+        "expected_completion": "16:00",
+        "batches": [
+          {"batch": 1, "deadline": "09:00"},
+          {"batch": 2, "deadline": "12:00"},
+          {"batch": 3, "deadline": "15:00"}
+        ]
+      },
+      "input_gate": "Z.HOT_LIST published",
+      "required_for_downstream": ["Rick"]
+    },
+    "Rick": {
+      "agent_id": "Rick",
+      "role": "Candidate-Job Matching & Positioning",
+      "inputs": [
+        "Jay.SUBMISSION_REQUESTS",
+        "Z.CANDIDATE_PROFILES"
+      ],
+      "outputs": [
+        "POSITIONED_APPLICATIONS",
+        "TRIFECTA_VERIFIED_PACKAGES"
+      ],
+      "work_schedule": {
+        "trigger_time": "09:30",
+        "expected_completion": "17:00",
+        "cycle_deadline": "08:30",
+        "inbound_priority": "60min response time"
+      },
+      "input_gates": [
+        "Jay has submitted requests",
+        "Z has approved profiles"
+      ],
+      "required_for_downstream": ["Leroy"]
+    },
+    "Leroy": {
+      "agent_id": "Leroy",
+      "role": "LinkedIn Profile Execution",
+      "inputs": [
+        "Rick.POSITIONED_APPLICATIONS",
+        "Z.SUBMISSION_APPROVALS",
+        "INBOUND_LEADS"
+      ],
+      "outputs": [
+        "APPLICATION_CONFIRMATIONS",
+        "PROFILE_HEALTH_REPORT",
+        "INBOUND_LEAD_ALERTS"
+      ],
+      "work_schedule": {
+        "trigger_time": "06:00",
+        "execution_window": "09:00-17:00",
+        "expected_completion": "17:00",
+        "inbound_detection_sla": "15min"
+      },
+      "input_gates": [
+        "Rick has positioned applications",
+        "Z has approved for submission"
+      ],
+      "safety_constraints": [
+        "Profile rate limits respected",
+        "No profile exceeds 5 apps/day",
+        "Profile health monitored continuously"
+      ]
+    }
+  },
+
+  "routing_rules": [
+    {
+      "rule_id": "URGENT_INBOUND_LEAD",
+      "description": "Inbound leads from clients/recruiters route immediately to Rick with highest priority",
+      "trigger": {
+        "message_type": "INBOUND_LEAD",
+        "priority": "URGENT"
+      },
+      "check": [
+        "Rick is responsive",
+        "Rick is not in ERROR state"
+      ],
+      "action": "route_immediately",
+      "target": "Rick",
+      "sla": "60min response time",
+      "escalation": "Human alert if Rick response >60min"
+    },
+    {
+      "rule_id": "URGENT_ALERT",
+      "description": "CRITICAL alerts (profile ban, visa expiring, duplicate submission) route immediately to human",
+      "trigger": {
+        "message_type": "ALERT",
+        "severity": ["CRITICAL", "HIGH"]
+      },
+      "action": "escalate_to_human",
+      "channel": "#alerts",
+      "immediate_notification": true,
+      "recommended_action_required": true
+    },
+    {
+      "rule_id": "SUBMISSION_REQUEST_ROUTING",
+      "description": "Submission requests from Jay route through Z for conflict check, then to Rick for positioning, then back to Z for final approval, then to Leroy for execution",
+      "trigger": {
+        "message_type": "REQUEST",
+        "from": "Jay",
+        "payload_contains": "submission_request"
+      },
+      "sequence": [
+        {
+          "step": 1,
+          "target": "Z",
+          "action": "conflict_check",
+          "check": "Z has fresh data (<4h old)",
+          "hold_condition": "Z data age >4h",
+          "hold_action": "queue locally, alert EM"
+        },
+        {
+          "step": 2,
+          "target": "Rick",
+          "action": "position_and_trifecta_verify",
+          "check": "Rick is responsive",
+          "hold_condition": "Rick queue depth >30 items",
+          "hold_action": "queue, process in next batch"
+        },
+        {
+          "step": 3,
+          "target": "Z",
+          "action": "final_approval_check",
+          "check": "No new conflicts since step 1",
+          "expected_response": "APPROVED or BLOCKED"
+        },
+        {
+          "step": 4,
+          "target": "Leroy",
+          "action": "execute_application",
+          "check": "Z approved, profile health GREEN, profile rate limit available",
+          "hold_condition": "Profile health RED or profile rate limit exceeded",
+          "hold_action": "rotate to backup profile or queue for next day"
+        }
+      ],
+      "sla": "Submission request to Leroy execution: <4 hours",
+      "logging": "Log every step transition in submission_log.jsonl"
+    },
+    {
+      "rule_id": "HOT_LIST_PUBLICATION",
+      "description": "Z publishes prioritized candidate queue (Hot List) by 07:00 deadline",
+      "trigger": {
+        "message_type": "UPDATE",
+        "from": "Z",
+        "content": "HOT_LIST"
+      },
+      "action": "publish_to_slack",
+      "channel": "#daily-hotlist",
+      "deadline": "07:00",
+      "escalation": "Human alert if deadline missed by >15min",
+      "recipients": [
+        "Jay (for research prioritization)",
+        "Human (for visibility)"
+      ]
+    },
+    {
+      "rule_id": "HEARTBEAT_STATUS",
+      "description": "Agent heartbeat/health check messages are batched and aggregated, not routed per-se",
+      "trigger": {
+        "message_type": "STATUS",
+        "content": "HEARTBEAT"
+      },
+      "action": "aggregate_and_log",
+      "frequency": "Every 15 minutes during active hours",
+      "logging_target": "system-history.jsonl",
+      "escalation": "If agent SLOW >2x expected or DEAD, escalate immediately"
+    },
+    {
+      "rule_id": "Z_SAFETY_GATE",
+      "description": "If Z is DEAD or SLOW, PAUSE all downstream message routing (critical safety measure)",
+      "trigger": {
+        "agent_state": "Z",
+        "state_values": ["DEAD", "ERROR", "SLOW_>1hr"]
+      },
+      "action": "pause_all_submissions",
+      "notification": "CRITICAL alert to human",
+      "rationale": "Z is data integrity gate. Cannot route safely without Z validation.",
+      "recovery": "Restore Z from backup, then resume routing"
+    },
+    {
+      "rule_id": "JAY_MISSING_DEADLINE",
+      "description": "If Jay misses batch deadline by >30 minutes, escalate to human",
+      "trigger": {
+        "agent": "Jay",
+        "event": "batch_deadline_missed",
+        "threshold": "30 minutes"
+      },
+      "action": "escalate_to_human",
+      "channel": "#alerts",
+      "information": "Pending submission requests count, reason for delay if available",
+      "recommended_action": "Review Jay's queue or extend deadline"
+    },
+    {
+      "rule_id": "RICK_MATCHING_CYCLE_DEADLINE",
+      "description": "If Rick matching cycle not complete by 08:30, investigate and escalate",
+      "trigger": {
+        "agent": "Rick",
+        "metric": "matching_cycle_completion",
+        "deadline": "08:30",
+        "threshold": "15 minutes late"
+      },
+      "action": "investigate_then_escalate",
+      "investigation": "Check queue depth, processing time per item, any ERROR states",
+      "escalation": "Report to human with root cause analysis",
+      "recommended_action": "Increase parallelism, reduce matching criteria complexity, or extend deadline"
+    },
+    {
+      "rule_id": "LEROY_EOD_DEADLINE",
+      "description": "All approved applications must be executed by EOD (17:00). If queue exceeds capacity, escalate.",
+      "trigger": {
+        "agent": "Leroy",
+        "metric": "applications_queued",
+        "time": "16:00",
+        "threshold": "Queue depth >10 items remaining"
+      },
+      "action": "escalate_to_human",
+      "information": "Remaining queue count, estimated completion time, profile health status",
+      "recommended_action": "Extend Leroy's work window, bring in backup resource, or defer non-urgent apps"
+    },
+    {
+      "rule_id": "INBOUND_LEAD_RESPONSE_SLA",
+      "description": "Inbound leads must be responded to within 60 minutes. Track and escalate if SLA missed.",
+      "trigger": {
+        "source": "Leroy.INBOUND_LEAD_ALERT",
+        "metric": "response_time",
+        "sla": "60min",
+        "threshold": "Response time >60min"
+      },
+      "action": "track_in_quota_report",
+      "escalation": "If 2 consecutive misses or 3 in week, escalate to human",
+      "reason": "Inbound leads indicate market demand. Fast response critical for pipeline."
+    },
+    {
+      "rule_id": "CRM_DATA_FRESHNESS",
+      "description": "Z must process new CRM data within 4 hours of arrival. If lag >4h, escalate.",
+      "trigger": {
+        "source": "CRM_DATA_EXPORT",
+        "metric": "Z_processing_latency",
+        "threshold": "4 hours"
+      },
+      "action": "escalate_to_human",
+      "channel": "#alerts",
+      "severity": "HIGH",
+      "information": "Data age, reason for delay if known, impact on downstream agents"
+    },
+    {
+      "rule_id": "QUOTA_MISS_ESCALATION",
+      "description": "Track quota compliance daily. 1st miss = observe. 2nd consecutive or 3rd in week = diagnose. Persistent = intervene.",
+      "trigger": {
+        "metric": "daily_quota_compliance",
+        "miss_count": {
+          "first": {"action": "log", "escalation": "none"},
+          "second_consecutive": {"action": "diagnose_and_report", "escalation": "human_notification"},
+          "third_in_week": {"action": "diagnose_and_report", "escalation": "human_notification"},
+          "persistent": {"action": "propose_fix", "escalation": "human_approval_required"}
+        }
+      }
+    },
+    {
+      "rule_id": "DATA_QUALITY_THRESHOLD",
+      "description": "If data quality drops <90%, trigger audit and escalate.",
+      "trigger": {
+        "metric": "data_quality_score",
+        "threshold": "<90%"
+      },
+      "action": "trigger_audit",
+      "audit_scope": "Z profile completeness, submission log consistency, duplicate check accuracy",
+      "escalation": "Report to human with findings and recommendations"
+    },
+    {
+      "rule_id": "PROFILE_BAN_EVENT",
+      "description": "If Leroy detects profile ban, immediately rotate to backup profile and escalate.",
+      "trigger": {
+        "source": "Leroy",
+        "event_type": "PROFILE_BAN"
+      },
+      "action": [
+        "Rotate to backup profile",
+        "Update profile health status to RED",
+        "Log event in system-history",
+        "Escalate to human"
+      ],
+      "channel": "#alerts",
+      "severity": "CRITICAL",
+      "recommended_action": "Review profile usage pattern, implement stricter rate limiting"
+    },
+    {
+      "rule_id": "VISA_URGENCY_ALERT",
+      "description": "If any consultant's visa expires within 30 days, flag for priority and escalate.",
+      "trigger": {
+        "source": "Z",
+        "metric": "visa_expiration_days",
+        "threshold": "<30"
+      },
+      "action": "escalate_to_human",
+      "channel": "#alerts",
+      "severity": "HIGH",
+      "recommended_action": "Prioritize for immediate submission, increase research intensity"
+    },
+    {
+      "rule_id": "DUPLICATE_DETECTION",
+      "description": "If Z detects duplicate submission (90-day rule or posting-level), block and escalate.",
+      "trigger": {
+        "source": "Z",
+        "event_type": "DUPLICATE_DETECTED"
+      },
+      "action": [
+        "Block submission",
+        "Log conflict details",
+        "Escalate to human"
+      ],
+      "channel": "#alerts",
+      "severity": "CRITICAL",
+      "reason": "Duplicate submission destroys agency credibility"
+    }
+  ],
+
+  "work_schedule": {
+    "timezone": "US/Eastern",
+    "business_hours": "06:00-17:30",
+    "daily_orchestration": [
+      {
+        "time": "05:30",
+        "action": "Health check",
+        "agent": "EM",
+        "description": "Verify all agents responsive"
+      },
+      {
+        "time": "06:00",
+        "action": "Trigger work",
+        "agent": "EM",
+        "target_agents": ["Z", "Leroy"],
+        "description": "Send CRM data to Z, trigger Leroy profile health check"
+      },
+      {
+        "time": "06:30",
+        "action": "Distribute work",
+        "agent": "EM",
+        "target_agents": ["Jay"],
+        "description": "Send Z Hot List to Jay (once published)"
+      },
+      {
+        "time": "07:00",
+        "action": "Publish Hot List",
+        "agent": "Z",
+        "deadline": "HARD",
+        "escalation_threshold": "15min late",
+        "description": "Z publishes prioritized candidate queue"
+      },
+      {
+        "time": "07:15",
+        "action": "Start research",
+        "agent": "Jay",
+        "description": "Jay begins job research with prioritized candidates"
+      },
+      {
+        "time": "09:00",
+        "action": "Batch 1 submission requests",
+        "agent": "Jay",
+        "deadline": "SOFT",
+        "escalation_threshold": "30min late",
+        "description": "Jay submits first batch to EM for routing"
+      },
+      {
+        "time": "09:30",
+        "action": "Start matching cycle",
+        "agent": "Rick",
+        "description": "Rick begins positioning first batch"
+      },
+      {
+        "time": "12:00",
+        "action": "Batch 2 submission requests",
+        "agent": "Jay",
+        "deadline": "SOFT",
+        "description": "Jay submits second batch"
+      },
+      {
+        "time": "15:00",
+        "action": "Batch 3 submission requests",
+        "agent": "Jay",
+        "deadline": "SOFT",
+        "description": "Jay submits final batch"
+      },
+      {
+        "time": "17:00",
+        "action": "Publish daily report",
+        "agent": "EM",
+        "deadline": "HARD",
+        "channel": "#em-dashboard",
+        "description": "EM posts daily system health and quota report"
+      },
+      {
+        "time": "17:15",
+        "action": "Execute daily backup",
+        "agent": "EM",
+        "target": "weights + memory files",
+        "description": "Back up all scoring weights and memory files"
+      },
+      {
+        "time": "17:45",
+        "action": "Log Kaizen observation",
+        "agent": "EM",
+        "target": "kaizen-journal.md",
+        "description": "Record one improvement observation or lesson learned"
+      },
+      {
+        "time": "23:00",
+        "day": "Sunday",
+        "action": "Execute weekly backup",
+        "agent": "EM",
+        "target": "full agent snapshots",
+        "description": "Back up all agent code, config, memory (weekly full snapshot)"
+      }
+    ]
+  },
+
+  "graceful_degradation": {
+    "Z_DOWN": {
+      "action": "PAUSE_ALL_SUBMISSIONS",
+      "rationale": "Z is data integrity gate. Cannot safely route without validation.",
+      "recovery": {
+        "step_1": "Trigger restart from backup",
+        "step_2": "Verify Z responses to heartbeat",
+        "step_3": "Resume routing"
+      },
+      "fallback": "Manual human oversight required"
+    },
+    "Jay_DOWN": {
+      "action": "USE_YESTERDAY_RESEARCH",
+      "rationale": "Submissions can continue with stale research data (suboptimal but safe).",
+      "recovery": {
+        "step_1": "Trigger restart from backup",
+        "step_2": "Queue any requests received while Jay was down",
+        "step_3": "Process queued batch once Jay is live"
+      },
+      "downstream_impact": "Rick has work, Leroy can execute"
+    },
+    "Rick_DOWN": {
+      "action": "QUEUE_APPROVED_APPS",
+      "rationale": "Apps can be executed without positioning (use template matching).",
+      "recovery": {
+        "step_1": "Trigger restart from backup",
+        "step_2": "Process queued submissions once Rick is live",
+        "step_3": "Resume normal flow"
+      },
+      "downstream_impact": "Leroy waits for positioned apps or executes with template"
+    },
+    "Leroy_DOWN": {
+      "action": "QUEUE_IN_SUBMISSION_TRACKER",
+      "rationale": "Applications are safe in queue. No data loss. Execute when Leroy restarts.",
+      "recovery": {
+        "step_1": "Trigger restart from backup",
+        "step_2": "Verify profile health (check for bans)",
+        "step_3": "Process queued applications in order"
+      },
+      "downstream_impact": "Upstream agents (Z, Jay, Rick) can continue working"
+    },
+    "EM_DOWN": {
+      "action": "LOCAL_QUEUING",
+      "rationale": "Agents have local message queues. System loses coordination but doesn't crash.",
+      "recovery": {
+        "step_1": "Immediate human intervention required",
+        "step_2": "Restart EM",
+        "step_3": "EM processes queued messages in dependency order"
+      },
+      "fallback": "Manual human routing of messages until EM restored"
+    }
+  },
+
+  "message_priority_levels": {
+    "URGENT": {
+      "description": "Inbound leads, critical alerts, agent failures",
+      "routing": "Immediate",
+      "sla": "<15 min",
+      "escalation": "Automatic if route fails"
+    },
+    "HIGH": {
+      "description": "Submission approvals/blocks, quota misses, data anomalies",
+      "routing": "Within 30 min",
+      "sla": "Same-day",
+      "escalation": "If delayed >2 hours"
+    },
+    "NORMAL": {
+      "description": "Regular submission requests, daily updates, status reports",
+      "routing": "In batch (hourly or per-deadline)",
+      "sla": "Within 4 hours",
+      "escalation": "If delayed >8 hours"
+    },
+    "LOW": {
+      "description": "Metrics, historical data, retrospective input",
+      "routing": "End-of-day batch",
+      "sla": "Within 24 hours",
+      "escalation": "None (informational)"
+    }
+  },
+
+  "hold_conditions": {
+    "Z_data_too_old": {
+      "trigger": "Z data age >4 hours",
+      "action": "Hold Jay submission requests",
+      "alert": "Notify EM and human",
+      "resolution": "Wait for Z to process new CRM data"
+    },
+    "Rick_queue_too_deep": {
+      "trigger": "Rick queue depth >30 items",
+      "action": "Hold new requests for Rick, batch them",
+      "resolution": "Process batch once Rick queue drops <20 items"
+    },
+    "Leroy_profile_rate_limit": {
+      "trigger": "Profile has 5 apps today already",
+      "action": "Hold application, rotate to backup profile",
+      "resolution": "Execute with backup profile or defer to tomorrow"
+    },
+    "Agent_SLOW": {
+      "trigger": "Agent processing time >2x expected baseline",
+      "action": "Hold new work, investigate root cause",
+      "resolution": "Once agent returns to normal speed, resume routing"
+    }
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "name": "z",
+  "display_name": "Agent Z — Candidate Profile Manager & Data Backbone",
+  "version": "1.0.0",
+  "description": "Single source of truth for consultant data, submission tracking, priority scoring, duplicate prevention, and Hot List publishing for Consultadd's recruitment operation.",
+  "model": "claude-sonnet-4-5-20250929",
+  "workspace": "./workspace",
+  "identity": {
+    "soul": "workspace/SOUL.md",
+    "agents": "workspace/AGENTS.md",
+    "user": "workspace/USER.md",
+    "tools": "workspace/TOOLS.md"
+  },
+  "skills": [
+    {
+      "name": "scoring",
+      "path": "workspace/skills/scoring",
+      "description": "Priority scoring, visa urgency calculation, and duplicate submission checking",
+      "tools": [
+        {
+          "name": "calculate_priority",
+          "script": "priority_calculator.py",
+          "function": "calculate_priority",
+          "description": "Compute weighted priority score for a consultant (0-10 scale, P1-P4 tiers)",
+          "config": "priority_weights.json"
+        },
+        {
+          "name": "calculate_batch_priorities",
+          "script": "priority_calculator.py",
+          "function": "calculate_batch_priorities",
+          "description": "Score and rank an entire bench of consultants"
+        },
+        {
+          "name": "calculate_visa_urgency",
+          "script": "visa_urgency_calculator.py",
+          "function": "calculate_visa_urgency",
+          "description": "Compute visa urgency tier from visa type and expiration date"
+        },
+        {
+          "name": "check_submission",
+          "script": "duplicate_checker.py",
+          "function": "check_submission",
+          "description": "Check a submission request against history and DNS for conflicts (5 hard rules)"
+        }
+      ]
+    },
+    {
+      "name": "csv-parser",
+      "path": "workspace/skills/csv-parser",
+      "description": "Parse Log1 CRM flat file exports into structured consultant profiles",
+      "tools": [
+        {
+          "name": "parse_crm_export",
+          "script": "csv_parser.py",
+          "function": "parse_crm_export",
+          "description": "Parse CSV/Excel CRM export, validate fields, return (profiles, issues)"
+        }
+      ]
+    },
+    {
+      "name": "hotlist-publisher",
+      "path": "workspace/skills/hotlist-publisher",
+      "description": "Generate the daily Hot List in standard Slack format",
+      "tools": [
+        {
+          "name": "generate_hotlist",
+          "script": "hotlist_publisher.py",
+          "function": "generate_hotlist",
+          "description": "Build formatted Hot List from prioritized profiles, stats, and alerts"
+        }
+      ]
+    }
+  ],
+  "memory": {
+    "path": "workspace/memory",
+    "files": {
+      "submission_log": "submission-log.jsonl",
+      "dns_master": "do-not-submit-master.md",
+      "linkedin_map": "linkedin-identity-map.md",
+      "priority_overrides": "priority-overrides.md",
+      "vendor_history": "vendor-history.md",
+      "lessons_learned": "lessons-learned.md"
+    }
+  },
+  "triggers": {
+    "daily": {
+      "time": "06:00",
+      "timezone": "US/Eastern",
+      "action": "morning_cycle",
+      "description": "Ingest fresh CRM data, recalculate priorities, publish Hot List by 07:00"
+    },
+    "on_message": {
+      "types": ["SUBMISSION_REQUEST", "DATA_UPDATE", "PRIORITY_OVERRIDE"],
+      "action": "handle_message"
+    }
+  },
+  "dependencies": {
+    "python": ">=3.9",
+    "packages": ["openpyxl"]
+  },
+  "safety": {
+    "is_safety_gate": true,
+    "required_for": ["jay", "rick", "leroy"],
+    "hard_rules": [
+      "Never approve submission without conflict check",
+      "Never estimate numbers — run the script",
+      "Never modify DNS list without human approval",
+      "Block submission if data is >4 hours stale"
+    ]
+  }
+}

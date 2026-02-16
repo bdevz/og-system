@@ -1,0 +1,159 @@
+{
+  "version": "1.0",
+  "created": "2025-02-15T00:00:00Z",
+  "description": "Backup schedule configuration for EM",
+
+  "daily_backups": {
+    "enabled": true,
+    "time": "07:00",
+    "timezone": "US/Eastern",
+    "what": [
+      "Scoring weights (all agents)",
+      "Memory files (agent registry, kaizen journal, lessons learned)",
+      "Configuration files (routing_rules.json, quota_config.json)"
+    ],
+    "agents": ["Z", "Jay", "Rick", "Leroy"],
+    "backup_location": "/backups/daily/",
+    "naming_scheme": "YYYY-MM-DD",
+    "retention": {
+      "policy": "keep_last_n_days",
+      "days": 30,
+      "estimated_size_per_backup": "100 KB"
+    }
+  },
+
+  "weekly_backups": {
+    "enabled": true,
+    "day": "Sunday",
+    "time": "23:00",
+    "timezone": "US/Eastern",
+    "what": [
+      "Full agent snapshots (SOUL.md, all skills, all memory, all configs)"
+    ],
+    "agents": ["Z", "Jay", "Rick", "Leroy"],
+    "backup_location": "/backups/weekly/",
+    "naming_scheme": "YYYY-Www (ISO week format)",
+    "retention": {
+      "policy": "keep_last_n_weeks",
+      "weeks": 12,
+      "estimated_size_per_backup": "5-10 MB"
+    }
+  },
+
+  "on_change_backups": {
+    "enabled": true,
+    "triggered_by": [
+      "Weight adjustment (human approval)",
+      "Rule added/modified (human approval)",
+      "Config change (human approval)"
+    ],
+    "what": [
+      "Full agent snapshots at time of change"
+    ],
+    "agents": ["Z", "Jay", "Rick", "Leroy"],
+    "backup_location": "/backups/on-change/",
+    "naming_scheme": "YYYY-MM-DD-HHmmss",
+    "retention": {
+      "policy": "keep_last_n_backups",
+      "backups": 10,
+      "estimated_size_per_backup": "5-10 MB"
+    }
+  },
+
+  "recovery_procedure": {
+    "trigger": "Agent enters DEAD state",
+    "steps": [
+      {
+        "step": 1,
+        "action": "Find most recent backup",
+        "source": "daily backup if available, else weekly"
+      },
+      {
+        "step": 2,
+        "action": "Copy backup to agent directory",
+        "target": "/agents/[agent_id]/workspace"
+      },
+      {
+        "step": 3,
+        "action": "Restart agent process"
+      },
+      {
+        "step": 4,
+        "action": "Verify agent heartbeat",
+        "timeout": "5 minutes"
+      },
+      {
+        "step": 5,
+        "action": "If success: resume operations",
+        "if_success": "Log event, continue"
+      },
+      {
+        "step": 6,
+        "action": "If failure: escalate to human",
+        "if_failure": "Send CRITICAL alert with diagnostic info"
+      }
+    ],
+    "recovery_sla": "10 minutes from DEAD detection to operational"
+  },
+
+  "backup_verification": {
+    "enabled": true,
+    "checks": [
+      "All files copied successfully (file count match)",
+      "Backup directory readable (no permission errors)",
+      "File checksums match originals (sampling check)",
+      "Backup timestamp recorded correctly"
+    ],
+    "on_verification_failure": "Alert EM and human immediately"
+  },
+
+  "disaster_recovery_scenarios": {
+    "single_agent_failure": {
+      "description": "One agent (e.g., Jay) enters DEAD state",
+      "action": "Restore from backup, resume operations. Upstream/downstream agents continue normally."
+    },
+    "multiple_agent_failure": {
+      "description": "2+ agents fail simultaneously",
+      "action": "Restore all in dependency order: Z first, then Jay+Rick, then Leroy. Escalate to human if recovery takes >30 min."
+    },
+    "em_failure": {
+      "description": "EM itself crashes",
+      "action": "Restart EM from backup. EM reads message queue from persistent logs. Agents have local message buffers. Resume routing from last checkpoint."
+    },
+    "data_corruption": {
+      "description": "Agent data becomes corrupted (bad file, wrong state)",
+      "action": "Restore full agent from backup. Reprocess messages from message log. Alert human with analysis of what went wrong."
+    },
+    "backup_directory_full": {
+      "description": "Backup storage runs out of space",
+      "action": "EM detects backup failure. Escalates to human. Human adds storage or increases cleanup aggressiveness."
+    }
+  },
+
+  "monitoring": {
+    "track": [
+      "Daily backup execution time (should be <10 sec)",
+      "Weekly backup execution time (should be <60 sec)",
+      "Backup success rate (should be 100%)",
+      "Backup storage usage (track growth)",
+      "Recovery time on agent failure (target <10 min)"
+    ],
+    "alerts": [
+      {
+        "condition": "Backup fails",
+        "severity": "HIGH",
+        "action": "Alert EM and human. Retry next cycle."
+      },
+      {
+        "condition": "Backup storage >90% full",
+        "severity": "HIGH",
+        "action": "Alert EM and human. Increase cleanup frequency or add storage."
+      },
+      {
+        "condition": "Recovery takes >15 minutes",
+        "severity": "MEDIUM",
+        "action": "Alert EM. Check for system resource issues."
+      }
+    ]
+  }
+}

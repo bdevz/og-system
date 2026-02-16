@@ -1,0 +1,176 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-02-15T00:00:00Z",
+  "description": "Behavior profiles define randomized activity parameters per tier to simulate human-like LinkedIn usage",
+  "A": {
+    "tier_name": "Thoroughbred",
+    "description": "Daily active profiles, high velocity applications, diverse activity",
+    "sessions_per_day": 2,
+    "session_duration_minutes": {
+      "min": 15,
+      "max": 30
+    },
+    "activities": {
+      "browse": {
+        "min": 5,
+        "max": 10,
+        "description": "Minutes spent browsing feed"
+      },
+      "reactions": {
+        "min": 3,
+        "max": 5,
+        "description": "Likes/reactions to posts"
+      },
+      "profile_views": {
+        "min": 3,
+        "max": 5,
+        "description": "Profiles viewed"
+      },
+      "comments": {
+        "min": 0,
+        "max": 1,
+        "description": "Comments on posts"
+      },
+      "connection_requests": {
+        "min": 2,
+        "max": 5,
+        "description": "Connection requests sent"
+      },
+      "applications": {
+        "min": 1,
+        "max": 3,
+        "description": "Job applications"
+      }
+    },
+    "daily_application_target": "2-5",
+    "connection_request_daily_limit": 20,
+    "gap_between_sessions_hours": "2-4"
+  },
+  "B": {
+    "tier_name": "Growth",
+    "description": "Growing profiles, moderate activity, light application rate",
+    "sessions_per_day": {
+      "min": 1,
+      "max": 2
+    },
+    "session_duration_minutes": {
+      "min": 10,
+      "max": 20
+    },
+    "activities": {
+      "browse": {
+        "min": 5,
+        "max": 7,
+        "description": "Minutes spent browsing feed"
+      },
+      "reactions": {
+        "min": 2,
+        "max": 3,
+        "description": "Likes/reactions to posts"
+      },
+      "profile_views": {
+        "min": 2,
+        "max": 3,
+        "description": "Profiles viewed"
+      },
+      "comments": {
+        "min": 0,
+        "max": 0,
+        "description": "Comments on posts"
+      },
+      "connection_requests": {
+        "min": 3,
+        "max": 8,
+        "description": "Connection requests sent"
+      },
+      "applications": {
+        "min": 0,
+        "max": 1,
+        "description": "Job applications"
+      }
+    },
+    "daily_application_target": "0-2",
+    "connection_request_daily_limit": 15,
+    "gap_between_sessions_hours": "4-6"
+  },
+  "C": {
+    "tier_name": "Warming",
+    "description": "New profiles, light activity, trust building focus",
+    "sessions_per_day": 1,
+    "activity_frequency": "every_2_3_days",
+    "session_duration_minutes": {
+      "min": 5,
+      "max": 10
+    },
+    "activities": {
+      "browse": {
+        "min": 3,
+        "max": 5,
+        "description": "Minutes spent browsing feed"
+      },
+      "reactions": {
+        "min": 1,
+        "max": 2,
+        "description": "Likes/reactions to posts"
+      },
+      "profile_views": {
+        "min": 3,
+        "max": 5,
+        "description": "Profiles viewed"
+      },
+      "comments": {
+        "min": 0,
+        "max": 0,
+        "description": "Comments on posts"
+      },
+      "connection_requests": {
+        "min": 3,
+        "max": 5,
+        "description": "Connection requests sent"
+      },
+      "applications": {
+        "min": 0,
+        "max": 0,
+        "description": "Job applications"
+      }
+    },
+    "daily_application_target": "0",
+    "connection_request_daily_limit": 8,
+    "gap_between_sessions_hours": "24+",
+    "skip_probability": 0.4
+  },
+  "D": {
+    "tier_name": "Dormant",
+    "description": "Reserve profiles, zero activity",
+    "sessions_per_day": 0,
+    "activity_frequency": "never",
+    "daily_application_target": "0",
+    "connection_request_daily_limit": 0,
+    "skip_probability": 1.0
+  },
+  "randomization_rules": {
+    "login_time_variance": "±15 minutes within defined window",
+    "session_duration_variance": "±3 minutes within tier bounds",
+    "activity_count_variance": "Random within tier bounds",
+    "gap_between_sessions": "2-5 hours random",
+    "weekend_probability": 0.5,
+    "weekend_volume_reduction": "40-50%"
+  },
+  "human_like_behaviors": {
+    "description": "Patterns that make activity look human rather than robotic",
+    "login_time_randomization": "No two logins at exact same time",
+    "activity_order_randomization": "Order of activities varies per session",
+    "skip_activities": "Occasionally skip planned activities (10% probability)",
+    "extend_session": "Occasionally extend session if engaging (5% probability)",
+    "return_quickly": "Occasionally return to profile within 1 hour (20% probability)",
+    "weekend_pattern": "Weekend activity 50% lower than weekday",
+    "vacation_pattern": "Can schedule 1-week quiet periods"
+  },
+  "safety_constraints": {
+    "max_daily_applications": 6,
+    "max_daily_connections": 20,
+    "min_seconds_between_actions": 3,
+    "max_consecutive_sessions": 2,
+    "required_gap_between_sessions": "2-5 hours"
+  }
+}

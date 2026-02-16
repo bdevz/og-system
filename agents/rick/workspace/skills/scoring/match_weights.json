@@ -1,0 +1,107 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-02-12T00:00:00Z",
+  "updated_by": "initial_setup",
+  "change_reason": "Initial weight configuration per architecture spec",
+  "weights": {
+    "skill_overlap_required": 0.30,
+    "skill_overlap_preferred": 0.10,
+    "experience_alignment": 0.15,
+    "rate_compatibility": 0.15,
+    "location_remote_match": 0.10,
+    "visa_compatibility": 0.10,
+    "posting_freshness": 0.05,
+    "vendor_tier_quality": 0.05
+  },
+  "thresholds": {
+    "strong_match": 80,
+    "good_match": 70,
+    "borderline_match": 60,
+    "weak_match": 0
+  },
+  "skill_equivalency": {
+    "spark": {
+      "pyspark": 0.80,
+      "scala_spark": 0.75,
+      "hadoop": 0.60
+    },
+    "airflow": {
+      "step_functions": 0.60,
+      "prefect": 0.70,
+      "dbt": 0.50
+    },
+    "kubernetes": {
+      "docker_swarm": 0.60,
+      "openshift": 0.80,
+      "ecs": 0.50
+    },
+    "jenkins": {
+      "circleci": 0.70,
+      "gitlab_ci": 0.70,
+      "github_actions": 0.75,
+      "aws_codepipeline": 0.60
+    },
+    "spring": {
+      "spring_boot": 0.95,
+      "quarkus": 0.50,
+      "micronaut": 0.50
+    },
+    "react": {
+      "vue": 0.60,
+      "angular": 0.60,
+      "svelte": 0.50
+    },
+    "postgres": {
+      "mysql": 0.70,
+      "mariadb": 0.70,
+      "oracle": 0.60
+    },
+    "mongodb": {
+      "dynamodb": 0.60,
+      "cassandra": 0.50,
+      "couchdb": 0.60
+    },
+    "aws": {
+      "gcp": 0.70,
+      "azure": 0.70,
+      "digitalocean": 0.40
+    },
+    "terraform": {
+      "cloudformation": 0.70,
+      "ansible": 0.60,
+      "pulumi": 0.70
+    }
+  },
+  "experience_brackets": {
+    "yrs_under_minus_3": 0.30,
+    "yrs_under_minus_1_to_2": 0.70,
+    "yrs_exact": 1.00,
+    "yrs_over_plus_1_to_3": 0.90,
+    "yrs_over_plus_4_plus": 0.70
+  },
+  "rate_brackets": {
+    "meets_min": 1.00,
+    "within_10_pct_below": 0.50,
+    "more_than_10_pct_below": 0.10
+  },
+  "location_brackets": {
+    "exact_match": 1.00,
+    "remote_plus_hybrid": 0.70,
+    "mismatch": 0.20
+  },
+  "visa_brackets": {
+    "accepted": 1.00,
+    "unknown": 0.50,
+    "excluded": 0.00
+  },
+  "posting_freshness_brackets": {
+    "less_than_24h": 1.00,
+    "1_to_3_days": 0.70,
+    "3_to_7_days": 0.40
+  },
+  "vendor_tier_brackets": {
+    "tier_1": 1.00,
+    "tier_2": 0.70,
+    "tier_3": 0.40
+  }
+}
